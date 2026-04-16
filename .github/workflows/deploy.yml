@@ -42,25 +42,23 @@ jobs:
           ssh -o StrictHostKeyChecking=no -o BatchMode=yes $SSH_HOST \
             "cd $DEPLOY_PATH && git pull origin main"
 
-          # Create systemd service file
+          # Create systemd service file using echo - more reliable than heredoc
           ssh -o StrictHostKeyChecking=no -o BatchMode=yes $SSH_HOST \
-            "cat > /etc/systemd/system/todoapp.service << 'SERVICEFILE'
-[Unit]
-Description=Todo App Server
-After=network.target
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=$DEPLOY_PATH
-Environment=\"PATH=\$DEPLOY_PATH/venv/bin:/usr/bin\"
-ExecStart=$DEPLOY_PATH/venv/bin/python server.py
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-SERVICEFILE
+            "echo '[Unit]' > /etc/systemd/system/todoapp.service && \
+             echo 'Description=Todo App Server' >> /etc/systemd/system/todoapp.service && \
+             echo 'After=network.target' >> /etc/systemd/system/todoapp.service && \
+             echo '' >> /etc/systemd/system/todoapp.service && \
+             echo '[Service]' >> /etc/systemd/system/todoapp.service && \
+             echo 'Type=simple' >> /etc/systemd/system/todoapp.service && \
+             echo 'User=www-data' >> /etc/systemd/system/todoapp.service && \
+             echo "WorkingDirectory=$DEPLOY_PATH" >> /etc/systemd/system/todoapp.service && \
+             echo 'Environment=\"PATH=\$DEPLOY_PATH/venv/bin:/usr/bin\"' >> /etc/systemd/system/todoapp.service && \
+             echo "ExecStart=$DEPLOY_PATH/venv/bin/python server.py" >> /etc/systemd/system/todoapp.service && \
+             echo 'Restart=always' >> /etc/systemd/system/todoapp.service && \
+             echo 'RestartSec=5' >> /etc/systemd/system/todoapp.service && \
+             echo '' >> /etc/systemd/system/todoapp.service && \
+             echo '[Install]' >> /etc/systemd/system/todoapp.service && \
+             echo 'WantedBy=multi-user.target' >> /etc/systemd/system/todoapp.service && \
              systemctl daemon-reload"
 
           # Start the server
