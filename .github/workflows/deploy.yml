@@ -24,37 +24,11 @@ jobs:
           pip install -r requirements.txt
           echo "Dependencies installed at $(date)"
 
-      - name: Setup SSH and deploy
-        uses: webfactory/ssh-agent@v0.6.0
-        with:
-          ssh-private-key: ${{ secrets.DEPLOY_SSH_KEY }}
-
-      - name: Create systemd service file
-        run: |
-          cat > /tmp/todoapp.service << 'EOF'
-[Unit]
-Description=Todo App Server
-After=network.target
-
-[Service]
-Type=simple
-User=www-data
-WorkingDirectory=DEPLOY_PATH_PLACEHOLDER
-Environment="PATH=DEPLOY_PATH_PLACEHOLDER/venv/bin:/usr/bin"
-ExecStart=DEPLOY_PATH_PLACEHOLDER/venv/bin/python server.py
-Restart=always
-RestartSec=5
-
-[Install]
-WantedBy=multi-user.target
-EOF
-          echo "Systemd service file created at /tmp/todoapp.service"
-
       - name: Deploy to server
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
         run: |
-          DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
-          SSH_HOST="${{ secrets.SSH_HOST }}"
-
           # Setup SSH for subsequent commands
           ssh -o StrictHostKeyChecking=no -o BatchMode=yes $SSH_HOST \
             "cd $DEPLOY_PATH && \
@@ -68,9 +42,9 @@ EOF
           ssh -o StrictHostKeyChecking=no -o BatchMode=yes $SSH_HOST \
             "cd $DEPLOY_PATH && git pull origin main"
 
-          # Create systemd service with correct path
+          # Create systemd service file
           ssh -o StrictHostKeyChecking=no -o BatchMode=yes $SSH_HOST \
-            "cat > /etc/systemd/system/todoapp.service << EOF2
+            "cat > /etc/systemd/system/todoapp.service << 'SERVICEFILE'
 [Unit]
 Description=Todo App Server
 After=network.target
@@ -86,7 +60,7 @@ RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
-EOF2
+SERVICEFILE
              systemctl daemon-reload"
 
           # Start the server
