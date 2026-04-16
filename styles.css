@@ -27,6 +27,32 @@ h1 {
     font-size: 2rem;
 }
 
+.menu-section {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+#filterMenu {
+    padding: 10px 20px;
+    border: 2px solid #e0e0e0;
+    border-radius: 10px;
+    background: white;
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    cursor: pointer;
+    outline: none;
+    transition: all 0.3s;
+}
+
+#filterMenu:focus {
+    border-color: #667eea;
+}
+
+#filterMenu:hover {
+    border-color: #998eea;
+}
+
 .input-section {
     display: flex;
     gap: 10px;

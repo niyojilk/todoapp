@@ -1,12 +1,17 @@
 // Select DOM elements
 const taskInput = document.getElementById('taskInput');
 const addTaskBtn = document.getElementById('addTaskBtn');
+const filterMenu = document.getElementById('filterMenu');
 const taskList = document.getElementById('taskList');
 const taskCount = document.getElementById('taskCount');
 const completedCount = document.getElementById('completedCount');
 
 // Load tasks from localStorage on startup
 let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+
+// Load filter preference from localStorage
+let currentFilter = localStorage.getItem('taskFilter') || 'all';
+filterMenu.value = currentFilter;
 
 // Save tasks to localStorage
 function saveTasks() {
@@ -57,9 +62,10 @@ function deleteTask(id) {
 
 // Render all tasks
 function renderTasks() {
+    const filteredTasks = filterTasks();
     taskList.innerHTML = '';
 
-    tasks.forEach(task => {
+    filteredTasks.forEach(task => {
         const li = document.createElement('li');
         li.className = 'task-item';
         if (task.completed) {
@@ -79,10 +85,13 @@ function renderTasks() {
         taskList.appendChild(li);
     });
 
-    // Update stats
+    // Update stats with filter-specific counts
+    const activeTasks = tasks.filter(t => !t.completed).length;
     const completedTasks = tasks.filter(t => t.completed).length;
-    taskCount.textContent = `${tasks.length} ${tasks.length === 1 ? 'task' : 'tasks'}`;
-    completedCount.textContent = `${completedTasks} ${completedTasks === 1 ? 'completed' : 'completed'}`;
+
+    let filterLabel = currentFilter === 'all' ? 'all' : currentFilter.charAt(0).toUpperCase() + currentFilter.slice(1);
+    taskCount.textContent = `${activeTasks} active tasks`;
+    completedCount.textContent = `${completedTasks} completed`;
 }
 
 // Escape HTML to prevent XSS
@@ -90,6 +99,16 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+// Filter tasks based on current selection
+function filterTasks() {
+    if (currentFilter === 'active') {
+        return tasks.filter(t => !t.completed);
+    } else if (currentFilter === 'completed') {
+        return tasks.filter(t => t.completed);
+    }
+    return tasks; // 'all' filter
 }
 
 // Event listeners
@@ -101,5 +120,12 @@ taskInput.addEventListener('keypress', (e) => {
     }
 });
 
+filterMenu.addEventListener('change', (e) => {
+    currentFilter = e.target.value;
+    localStorage.setItem('taskFilter', currentFilter);
+    renderTasks();
+});
+
 // Initial render
+filterMenu.addEventListener('change', renderTasks);
 renderTasks();
