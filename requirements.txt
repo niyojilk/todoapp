@@ -1,0 +1,4 @@
+# Simple Python HTTP server dependencies
+# For static file serving with basic features
+gunicorn==21.2.0  # Production WSGI server
+uvicorn==0.24.0   # Alternative ASGI server
