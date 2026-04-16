@@ -28,6 +28,7 @@ jobs:
         env:
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           SSH_HOST: ${{ secrets.SSH_HOST }}
+          GITHUB_REPO: ${{ github.repository }}
         run: |
           # Setup SSH for subsequent commands
           ssh -o StrictHostKeyChecking=no -o BatchMode=yes $SSH_HOST \
@@ -38,11 +39,19 @@ jobs:
              pip install --upgrade pip && \
              pip install -r requirements.txt"
 
-          # Pull latest code
+          # Pull latest code from GitHub (or init git if fresh deploy)
           ssh -o StrictHostKeyChecking=no -o BatchMode=yes $SSH_HOST \
-            "cd $DEPLOY_PATH && git pull origin main"
+            "cd $DEPLOY_PATH && \
+             if [ -f .git/config ]; then \
+               git pull origin main; \
+             else \
+               git init && \
+               git remote add origin https://github.com/niyojilk/todoapp.git && \
+               git fetch origin && \
+               git reset --hard origin/main; \
+             fi"
 
-          # Create systemd service file using echo - more reliable than heredoc
+          # Create systemd service file using echo
           ssh -o StrictHostKeyChecking=no -o BatchMode=yes $SSH_HOST \
             "echo '[Unit]' > /etc/systemd/system/todoapp.service && \
              echo 'Description=Todo App Server' >> /etc/systemd/system/todoapp.service && \
