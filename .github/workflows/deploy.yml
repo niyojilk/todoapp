@@ -61,7 +61,8 @@ jobs:
              echo 'User=www-data' >> /etc/systemd/system/todoapp.service && \
              echo "WorkingDirectory=$DEPLOY_PATH" >> /etc/systemd/system/todoapp.service && \
              echo 'Environment=\"PATH=\$DEPLOY_PATH/venv/bin:/usr/bin\"' >> /etc/systemd/system/todoapp.service && \
-             echo "ExecStart=$DEPLOY_PATH/venv/bin/python server.py" >> /etc/systemd/system/todoapp.service && \
+             # Note: SSH_HOST is NOT used here - only DEPLOY_PATH is used
+echo "ExecStart=$DEPLOY_PATH/venv/bin/python server.py" >> /etc/systemd/system/todoapp.service && \
              echo 'Restart=always' >> /etc/systemd/system/todoapp.service && \
              echo 'RestartSec=5' >> /etc/systemd/system/todoapp.service && \
              echo '' >> /etc/systemd/system/todoapp.service && \
