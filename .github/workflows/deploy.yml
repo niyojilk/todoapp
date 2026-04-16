@@ -13,68 +13,48 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Setup SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
-          chmod 600 ~/.ssh/deploy_key
-          chmod 700 ~/.ssh
-          # Add the key to ssh-agent
-          eval "$(ssh-agent -s)"
-          ssh-add ~/.ssh/deploy_key
-          # Test SSH connection
-          echo "Testing SSH connection to ${{ secrets.SSH_HOST }}"
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=no ${{ secrets.SSH_HOST }} "echo 'SSH connection successful'" || echo "SSH connection test skipped"
-
       - name: Deploy to server
-        run: |
-          DEPLOY_PATH="${{ secrets.DEPLOY_PATH }}"
-          SSH_HOST="${{ secrets.SSH_HOST }}"
+        uses: appleboy/ssh-action@v0.1.8
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.DEPLOY_SSH_KEY }}
+          script: |
+            # Remove old deployment
+            cd ${{ secrets.DEPLOY_PATH }}
+            rm -rf venv .env
 
-          # Setup on server
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=no $SSH_HOST \
-            "cd $DEPLOY_PATH && \
-             rm -rf venv .env && \
-             python3 -m venv venv && \
-             source venv/bin/activate && \
-             pip install --upgrade pip && \
-             pip install -r requirements.txt"
+            # Create virtual environment and install dependencies
+            python3 -m venv venv
+            source venv/bin/activate
+            pip install --upgrade pip
+            pip install -r requirements.txt
 
-          # Pull latest code
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=no $SSH_HOST \
-            "cd $DEPLOY_PATH && \
-             if [ -f .git/config ]; then \
-               git pull origin main; \
-             else \
-               git init && \
-               git remote add origin https://github.com/niyojilk/todoapp.git && \
-               git fetch origin && \
-               git reset --hard origin/main; \
-             fi"
+            # Pull latest code from GitHub
+            git pull origin main
 
-          # Create systemd service file
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=no $SSH_HOST \
-            "echo '[Unit]' > /etc/systemd/system/todoapp.service && \
-             echo 'Description=Todo App Server' >> /etc/systemd/system/todoapp.service && \
-             echo 'After=network.target' >> /etc/systemd/system/todoapp.service && \
-             echo '' >> /etc/systemd/system/todoapp.service && \
-             echo '[Service]' >> /etc/systemd/system/todoapp.service && \
-             echo 'Type=simple' >> /etc/systemd/system/todoapp.service && \
-             echo 'User=www-data' >> /etc/systemd/system/todoapp.service && \
-             echo "WorkingDirectory=$DEPLOY_PATH" >> /etc/systemd/system/todoapp.service && \
-             echo 'Environment="PATH=\$DEPLOY_PATH/venv/bin:/usr/bin"' >> /etc/systemd/system/todoapp.service && \
-             echo "ExecStart=$DEPLOY_PATH/venv/bin/python server.py" >> /etc/systemd/system/todoapp.service && \
-             echo 'Restart=always' >> /etc/systemd/system/todoapp.service && \
-             echo 'RestartSec=5' >> /etc/systemd/system/todoapp.service && \
-             echo '' >> /etc/systemd/system/todoapp.service && \
-             echo '[Install]' >> /etc/systemd/system/todoapp.service && \
-             echo 'WantedBy=multi-user.target' >> /etc/systemd/system/todoapp.service && \
-             systemctl daemon-reload"
+            # Create systemd service file
+            echo '[Unit]' > /etc/systemd/system/todoapp.service
+            echo 'Description=Todo App Server' >> /etc/systemd/system/todoapp.service
+            echo 'After=network.target' >> /etc/systemd/system/todoapp.service
+            echo '' >> /etc/systemd/system/todoapp.service
+            echo '[Service]' >> /etc/systemd/system/todoapp.service
+            echo 'Type=simple' >> /etc/systemd/system/todoapp.service
+            echo 'User=www-data' >> /etc/systemd/system/todoapp.service
+            echo "WorkingDirectory=${{ secrets.DEPLOY_PATH }}" >> /etc/systemd/system/todoapp.service
+            echo 'Environment="PATH=${{ secrets.DEPLOY_PATH }}/venv/bin:/usr/bin"' >> /etc/systemd/system/todoapp.service
+            echo "ExecStart=${{ secrets.DEPLOY_PATH }}/venv/bin/python server.py" >> /etc/systemd/system/todoapp.service
+            echo 'Restart=always' >> /etc/systemd/system/todoapp.service
+            echo 'RestartSec=5' >> /etc/systemd/system/todoapp.service
+            echo '' >> /etc/systemd/system/todoapp.service
+            echo '[Install]' >> /etc/systemd/system/todoapp.service
+            echo 'WantedBy=multi-user.target' >> /etc/systemd/system/todoapp.service
 
-          # Start the server
-          ssh -o BatchMode=yes -o StrictHostKeyChecking=no $SSH_HOST \
-            "cd $DEPLOY_PATH && \
-             source venv/bin/activate && \
-             nohup python server.py > server.log 2>&1 &"
+            # Reload systemd
+            systemctl daemon-reload
 
-          echo "Deployment completed at $(date)"
+            # Start the server
+            source venv/bin/activate
+            nohup python server.py > server.log 2>&1 &
+
+            echo "Deployment completed at $(date)"
